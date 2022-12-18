@@ -1,9 +1,11 @@
 from django.contrib.auth.decorators import login_required
+
 from django.core.paginator import Paginator
+
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.csrf import csrf_exempt
 
 from .models import Group, Post, User
+
 from .forms import PostForm
 
 
@@ -55,7 +57,7 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     posts_count = post.author.posts.count()
-    title = post.text[0:30]
+    title = post.text[:30]
     context = {
         'posts': post,
         'posts_count': posts_count,
@@ -65,7 +67,6 @@ def post_detail(request, post_id):
 
 
 @login_required
-@csrf_exempt
 def post_create(request):
     if request.method == 'POST':
         form = PostForm(request.POST)
@@ -76,20 +77,22 @@ def post_create(request):
             return redirect('posts:profile', post.author.username)
     else:
         form = PostForm()
-    return render(request, 'posts/create_post.html', {'form': form})
+    return render(request, 'posts/post_create.html', {'form': form})
 
 
 @login_required
-@csrf_exempt
 def post_edit(request, post_id):
+    """Функция для редактирования поста"""
     post = get_object_or_404(Post, pk=post_id)
-    is_edit = True
     form = PostForm(request.POST, instance=post)
+    if post.author != request.user:
+        return redirect('posts:post_detail', post_id)
     if form.is_valid():
-        post.save()
+        form.save()
         return redirect('posts:post_detail', post_id)
     context = {
-        'is_edit': is_edit,
-        'form': form,
+        'form': PostForm(instance=post),
+        'post': post,
+        'is_edit': True
     }
-    return render(request, 'posts/create_post.html', context)
+    return render(request, 'posts/post_create.html', context)
